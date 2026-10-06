@@ -35,6 +35,17 @@ std::string App::WidgetInputService::ToCharacter(Red::EInputKey aKey)
     if (!IsCharacterInput(aKey))
         return {};
 
+#ifdef __APPLE__
+    // macOS: no Win32 keyboard translation; map the plain ASCII keys.
+    const auto code = static_cast<uint32_t>(aKey);
+    if (aKey == Red::EInputKey::IK_Space)
+        return " ";
+    if (aKey >= Red::EInputKey::IK_0 && aKey <= Red::EInputKey::IK_9)
+        return std::string(1, static_cast<char>('0' + (code - static_cast<uint32_t>(Red::EInputKey::IK_0))));
+    if (aKey >= Red::EInputKey::IK_A && aKey <= Red::EInputKey::IK_Z)
+        return std::string(1, static_cast<char>('a' + (code - static_cast<uint32_t>(Red::EInputKey::IK_A))));
+    return {};
+#else
     BYTE keyboardState[256];
     GetKeyboardState(keyboardState);
 
@@ -50,6 +61,7 @@ std::string App::WidgetInputService::ToCharacter(Red::EInputKey aKey)
 
     std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
     return converter.to_bytes(buffer);
+#endif
 }
 
 bool App::WidgetInputService::IsCharacterInput(Red::EInputKey aKey)

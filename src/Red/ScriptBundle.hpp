@@ -228,7 +228,11 @@ struct ScriptBundle
     DynArray<CString> strings;                           // F0
     HashMap<CName, void*> unk100;                        // 100
     SharedSpinLock typesLock;                            // 130
+#ifdef __APPLE__
+    uint8_t unk138[0x28];                                // 138 (CRITICAL_SECTION on Windows)
+#else
     CRITICAL_SECTION unk138;                             // 138
+#endif
 };
 RED4EXT_ASSERT_SIZE(ScriptBundle, 0x160);
 }

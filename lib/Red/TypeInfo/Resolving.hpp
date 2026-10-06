@@ -117,7 +117,7 @@ consteval auto ExtractScopedEnumName(const char* aName)
 {
     std::array<char, N - ScopedEnumPrefixLength + 1> result{};
 
-    for (auto i = ScopedEnumPrefixLength, j = 0ull; i < N; ++i)
+    for (size_t i = ScopedEnumPrefixLength, j = 0; i < N; ++i)
     {
         if (aName[i] != ':')
         {
@@ -429,8 +429,14 @@ inline CClass* GetScriptClass(CName aTypeName)
 
 inline CName GetScriptAlias(CName aTypeName)
 {
+#ifdef __APPLE__
+    // macOS: the game's HashMap layout differs from the SDK's; use the game's own lookup.
+    const auto alias = CRTTISystem::Get()->ConvertNativeToScriptName(aTypeName);
+    return alias == aTypeName ? CName{} : alias;
+#else
     auto alias = CRTTISystem::Get()->nativeToScript.Get(aTypeName);
     return alias ? *alias : CName{};
+#endif
 }
 
 template<CName AType>

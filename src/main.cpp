@@ -17,6 +17,11 @@ RED4EXT_C_EXPORT bool RED4EXT_CALL Main(RED4ext::v1::PluginHandle aHandle, RED4e
     {
     case RED4ext::v1::EMainReason::Load:
     {
+#ifdef __APPLE__
+        // macOS port: RED4ext calls Main(Load) twice for the same plugin; ignore repeated loads.
+        if (g_app)
+            break;
+#endif
         g_app = Core::MakeUnique<App::Application>(aHandle, aSdk);
         g_app->Bootstrap();
         break;
@@ -49,6 +54,7 @@ RED4EXT_C_EXPORT uint32_t RED4EXT_CALL Supports()
     return RED4EXT_API_VERSION_1_COMPAT_0;
 }
 
+#ifndef __APPLE__
 // ASI
 
 BOOL APIENTRY DllMain(HMODULE aHandle, DWORD aReason, LPVOID)
@@ -88,3 +94,4 @@ BOOL APIENTRY DllMain(HMODULE aHandle, DWORD aReason, LPVOID)
 
     return TRUE;
 }
+#endif

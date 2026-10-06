@@ -1,3 +1,14 @@
+# Codeware-macos (macOS port)
+
+Apple Silicon port of the upstream project, built on [RED4ext-macos](https://github.com/Enrique53xD/RED4ext-macos). See [cp2077-macos-tools](https://github.com/Enrique53xD/cp2077-macos-tools) for the full install guide.
+
+**Build:** clone next to `RED4ext-macos` and `ArchiveXL-macos`, then `mkdir build && cd build && cmake .. && make -j8`, `codesign -f -s - Codeware.dylib`.
+**Install:** copy the dylib to `<game>/red4ext/plugins/Codeware/` with an empty `rtti_experiment` file beside it.
+**Status:** reduced script subset (UI, Scripting, Utils, Reflection, Base) compiles and loads; some native game systems are not available yet.
+Original README below.
+
+---
+
 # Codeware
 
 Codeware is a library and framework for creating redscript and Cyber Engine Tweaks mods.

@@ -13,7 +13,9 @@
 #include "App/World/OpenWorldTracker.hpp"
 #include "Core/Foundation/LocaleProvider.hpp"
 #include "Core/Foundation/RuntimeProvider.hpp"
+#ifndef __APPLE__
 #include "Support/MinHook/MinHookProvider.hpp"
+#endif
 #include "Support/RED4ext/RED4extProvider.hpp"
 #include "Support/RedLib/RedLibProvider.hpp"
 #include "Support/Spdlog/SpdlogProvider.hpp"
@@ -22,17 +24,27 @@ App::Application::Application(HMODULE aHandle, const RED4ext::v1::Sdk* aSdk)
 {
     Register<Core::LocaleProvider>();
     Register<Core::RuntimeProvider>(aHandle)
+#ifdef __APPLE__
+        ->SetBaseImagePathDepth(3); // <game>/Cyberpunk2077.app/Contents/MacOS/Cyberpunk2077 -> <game>
+#else
         ->SetBaseImagePathDepth(2);
+#endif
 
+#ifndef __APPLE__
     Register<Support::MinHookProvider>();
+#endif
     Register<Support::SpdlogProvider>()
         ->AppendTimestampToLogName()
         ->CreateRecentLogSymlink();
     Register<Support::RED4extProvider>(aHandle, aSdk)
+#ifdef __APPLE__
+        ->EnableHooking() // no MinHook on macOS: hooks go through the RED4ext host
+#endif
         ->EnableAddressLibrary()
         ->RegisterScripts(Env::ScriptsDir());
     Register<Support::RedLibProvider>();
 
+#ifndef __APPLE__
     Register<App::ScriptingService>(Env::PersistentDir());
     Register<App::LocalizationService>();
     Register<App::PersistencyService>();
@@ -42,6 +54,8 @@ App::Application::Application(HMODULE aHandle, const RED4ext::v1::Sdk* aSdk)
     Register<App::WidgetBuildingService>();
     Register<App::WidgetSpawningService>();
     Register<App::WidgetInputService>();
+#endif
+    // macOS port, stage 1: services are enabled one by one as the game functions they need are located.
 }
 
 void App::Application::OnStarting()

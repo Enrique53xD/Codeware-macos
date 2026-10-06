@@ -509,11 +509,16 @@ public:
         if (name != aAlias)
         {
             auto rtti = CRTTISystem::Get();
+#ifdef __APPLE__
+            // macOS: the game's HashMap layout differs from the SDK's; register through the game's own method.
+            rtti->RegisterScriptName(name, aAlias);
+#else
             if (rtti->scriptToNative.Get(aAlias) == nullptr)
             {
                 rtti->scriptToNative.Insert(aAlias, name);
                 rtti->nativeToScript.Insert(name, aAlias);
             }
+#endif
         }
     }
 
@@ -1000,7 +1005,7 @@ struct SystemBuilder
 
         gameInstance->systemMap.Insert(systemType, systemInstance);
         gameInstance->systemImplementations.Insert(systemType, systemType);
-        gameInstance->systemInstances.EmplaceBack(systemInstance);
+        gameInstance->systemInstances.EmplaceBack(reinterpret_cast<const Handle<IScriptable>&>(systemInstance)); // clang: converting ctor is ambiguous
     }
 
     static inline Handle<TSystem> BuildSystem()
@@ -1026,9 +1031,16 @@ struct ClassDefinition
     static inline void RegisterType()
     {
         constexpr auto name = GetTypeNameStr<TClass>();
+#ifdef __APPLE__
+        if (Detail::IsSkippedType(name.data()) || Detail::IsSkippedType("ALL_DEFINE"))
+            return;
+#endif
 
         auto* type = Red::Memory::RTTIAllocator::Get()->Alloc<Descriptor>();
         new (type) Descriptor();
+#ifdef __APPLE__
+        if (FILE* lf = fopen("/tmp/axl_alloc.log", "a")) { fprintf(lf, "CLASS %s -> %p\n", name.data(), (void*)type); fclose(lf); }
+#endif
 
         type->name = CNamePool::Add(name.data());
 
@@ -1115,6 +1127,10 @@ struct ClassExpansion
         if constexpr (Detail::HasDescribeHandler<Specialization, Descriptor>)
         {
             constexpr auto name = GetTypeName<TClass>();
+#ifdef __APPLE__
+            if (Detail::IsSkippedType("ALL_EXPAND"))
+                return;
+#endif
 
             auto* rtti = CRTTISystem::Get();
             auto* type = reinterpret_cast<Descriptor*>(rtti->GetClass(name));
@@ -1143,8 +1159,18 @@ struct EnumDefinition
     static inline void RegisterType()
     {
         constexpr auto name = GetTypeNameStr<TEnum>();
+#ifdef __APPLE__
+        if (Detail::IsSkippedType("ALL_ENUM"))
+            return;
+#endif
 
+#ifdef __APPLE__
+        // macOS: the game's CEnum may be larger than the SDK's; allocate from the plugin arena with generous padding.
+        auto* type = static_cast<Descriptor*>(Red::Memory::RTTIAllocator::Get()->Alloc(sizeof(Descriptor) + 0x200).memory);
+        new (type) Descriptor();
+#else
         auto* type = new Descriptor();
+#endif
         type->name = CNamePool::Add(name.data());
 
         if constexpr (Detail::HasRegisterHandler<Specialization, Descriptor>)
@@ -1162,6 +1188,8 @@ struct EnumDefinition
 
         auto* rtti = CRTTISystem::Get();
         auto* type = reinterpret_cast<Descriptor*>(rtti->GetEnum(name));
+        if (!type)
+            return;
 
         constexpr auto min = Detail::GetMinValue<Specialization, TEnum>();
         constexpr auto max = Detail::GetMaxValue<Specialization, TEnum>();
@@ -1223,6 +1251,10 @@ struct GlobalDefinition
 
     static inline void Register()
     {
+#ifdef __APPLE__
+        if (Detail::IsSkippedType("ALL_GLOBALS"))
+            return;
+#endif
         if constexpr (Detail::HasRegisterHandler<Specialization, Descriptor>)
         {
             auto* rtti = reinterpret_cast<Descriptor*>(CRTTISystem::Get());
@@ -1232,6 +1264,10 @@ struct GlobalDefinition
 
     static inline void Describe()
     {
+#ifdef __APPLE__
+        if (Detail::IsSkippedType("ALL_GLOBALS"))
+            return;
+#endif
         if constexpr (Detail::HasDescribeHandler<Specialization, Descriptor>)
         {
             auto* rtti = reinterpret_cast<Descriptor*>(CRTTISystem::Get());
